@@ -1327,7 +1327,19 @@ def get_profile_display_name(conn, device_id: str, profile_id: str) -> str | Non
 
 
 def upsert_device(conn, device_id: str, hardware_type: str = "", client_type: str = "") -> None:
-    device_id = normalize_device_id(device_id)
+    # Prefer the exact ID when it is already known (auth or devices). OmniSaveSwitch
+    # uses suffixes like "-emu"; blindly stripping hyphens creates a ghost device
+    # (e.g. A438…-emu vs A438…EMU) and leaves the paired device looking offline.
+    raw = device_id
+    known = conn.execute(
+        "SELECT 1 FROM device_auth WHERE device_id=?"
+        " UNION SELECT 1 FROM devices WHERE device_id=? AND deleted_at IS NULL",
+        (raw, raw),
+    ).fetchone()
+    if known:
+        device_id = raw
+    else:
+        device_id = normalize_device_id(device_id)
     now = _now()
     conn.execute(
         "INSERT INTO devices (device_id,hardware_type,client_type,last_seen,created_at)"
