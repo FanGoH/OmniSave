@@ -1345,7 +1345,8 @@ def upsert_device(conn, device_id: str, hardware_type: str = "", client_type: st
         "INSERT INTO devices (device_id,hardware_type,client_type,last_seen,created_at)"
         " VALUES (?,?,?,?,?)"
         " ON CONFLICT(device_id) DO UPDATE SET"
-        "   hardware_type=excluded.hardware_type,"
+        "   hardware_type=CASE WHEN excluded.hardware_type!='' THEN excluded.hardware_type"
+        "                      ELSE devices.hardware_type END,"
         "   client_type=CASE WHEN excluded.client_type!='' THEN excluded.client_type"
         "                    ELSE devices.client_type END,"
         "   last_seen=excluded.last_seen",
